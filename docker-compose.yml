@@ -1,13 +1,16 @@
 services:
   wikijs-mcp:
-    build: .
+    # Pre-built image from GitHub Container Registry (default)
+    image: ghcr.io/nextheberg/wikijs-mcp-server-docker:main
+    # To build locally instead, comment out 'image' and uncomment 'build':
+    # build: .
     restart: unless-stopped
     ports:
       - "3200:3200"
     environment:
+      WIKIJS_BASE_URL: "http://your-wikijs-host:3000"
+      WIKIJS_TOKEN: "your_wikijs_api_token_here"
       PORT: "3200"
-      WIKIJS_BASE_URL: ""
-      WIKIJS_TOKEN: ""
     networks:
       - wikijs-mcp-net
 

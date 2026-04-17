@@ -362,39 +362,50 @@ updated_user = await mcp_client.call_tool("update_user", {
 
 ## 🐳 Docker Deployment
 
-This server is available as a self-contained Docker image exposing the MCP HTTP server on port 3200.
+The server is published as a ready-to-use Docker image on GitHub Container Registry. No build step required.
 
-### Build the image
+**Image:** `ghcr.io/nextheberg/wikijs-mcp-server-docker:main`
+
+---
+
+### Deploy with Docker Compose (recommended)
+
+**Step 1 — Download the compose file**
 
 ```bash
-docker build -t wikijs-mcp-server .
+curl -O https://raw.githubusercontent.com/nextheberg/wikijs-mcp-server-docker/main/docker-compose.yml
 ```
 
-### Run with Docker Compose (recommended)
+**Step 2 — Set your environment variables**
 
-1. Copy `example.env` as a reference and fill in your values directly in `docker-compose.yml`, or use an `.env` file next to it:
+Edit `docker-compose.yml` and replace the placeholder values:
 
 ```yaml
-# docker-compose.yml — environment section
 environment:
-  PORT: "3200"
-  WIKIJS_BASE_URL: "http://your-wikijs-host:3000"
-  WIKIJS_TOKEN: "your_wikijs_api_token_here"
+  WIKIJS_BASE_URL: "http://your-wikijs-host:3000"   # URL of your Wiki.js instance
+  WIKIJS_TOKEN: "your_wikijs_api_token_here"         # Wiki.js API token
+  PORT: "3200"                                        # Port (default: 3200)
 ```
 
-2. Start the service:
+> **How to get a Wiki.js API token:**
+> Log into the Wiki.js admin panel → **Administration → API Access** → create a key with the required permissions.
+
+**Step 3 — Start the service**
 
 ```bash
 docker compose up -d
 ```
 
-3. Verify it is running:
+**Step 4 — Verify**
 
 ```bash
 curl http://localhost:3200/health
+# {"status":"ok","message":"MCP Server is running and connected to Wiki.js"}
 ```
 
-### Run with plain Docker
+---
+
+### Deploy with plain Docker
 
 ```bash
 docker run -d \
@@ -403,44 +414,57 @@ docker run -d \
   -e WIKIJS_BASE_URL=http://your-wikijs-host:3000 \
   -e WIKIJS_TOKEN=your_wikijs_api_token_here \
   --restart unless-stopped \
-  wikijs-mcp-server
+  ghcr.io/nextheberg/wikijs-mcp-server-docker:main
 ```
 
-### Configure claude.ai as a remote MCP client
+---
 
-Once the server is deployed and reachable over HTTPS, add it in **claude.ai → Settings → Connections → Add MCP Server**:
+### Build the image locally (optional)
+
+Only needed if you want to modify the source code:
+
+```bash
+git clone https://github.com/nextheberg/wikijs-mcp-server-docker.git
+cd wikijs-mcp-server-docker
+docker build -t wikijs-mcp-server .
+```
+
+Then in `docker-compose.yml`, comment out `image:` and uncomment `build: .`:
+
+```yaml
+# image: ghcr.io/nextheberg/wikijs-mcp-server-docker:main
+build: .
+```
+
+---
+
+### Connect to claude.ai
+
+Once the server is publicly reachable over HTTPS, register it in **claude.ai → Settings → Connections → Add MCP Server**:
 
 | Field | Value |
 |-------|-------|
-| Name | wikijs |
-| URL | `https://your-domain.com/mcp` |
+| Name | `wikijs` |
+| URL  | `https://your-domain.com/mcp` |
 
-The claude.ai client will use `POST /mcp` for JSON-RPC calls and `GET /mcp/events` for SSE events automatically.
+claude.ai will automatically use `POST /mcp` for JSON-RPC and `GET /mcp/events` for Server-Sent Events.
 
-### Security note
+---
 
-> **Do not expose the container directly on the internet without TLS.**
-> Place a reverse proxy such as [Nginx](https://nginx.org/) or [Caddy](https://caddyserver.com/) in front of the container to terminate HTTPS. Caddy example:
->
-> ```
-> your-domain.com {
->     reverse_proxy localhost:3200
-> }
-> ```
->
-> Optionally add HTTP Basic Auth or a bearer-token check at the proxy level to prevent unauthorized access to your Wiki.js data.
+### Security
 
-### GitHub Actions / CI
+> **Never expose the container directly over plain HTTP on the internet.**
+> Terminate TLS with a reverse proxy such as [Caddy](https://caddyserver.com/) (recommended) or Nginx.
 
-The repository includes a workflow at `.github/workflows/docker-build.yml` that:
-- Builds the image on every push to `main` and on pull requests
-- Pushes the image to GitHub Container Registry (`ghcr.io`) on pushes to `main` and version tags (`v*`)
+Minimal Caddy configuration:
 
-To pull the published image:
-
-```bash
-docker pull ghcr.io/<your-github-org>/<repo-name>:main
 ```
+your-domain.com {
+    reverse_proxy localhost:3200
+}
+```
+
+For extra protection, add an API key check at the proxy level so that only authorised callers can reach your Wiki.js data.
 
 ---
 
