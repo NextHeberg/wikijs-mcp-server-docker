@@ -360,6 +360,90 @@ updated_user = await mcp_client.call_tool("update_user", {
 })
 ```
 
+## 🐳 Docker Deployment
+
+This server is available as a self-contained Docker image exposing the MCP HTTP server on port 3200.
+
+### Build the image
+
+```bash
+docker build -t wikijs-mcp-server .
+```
+
+### Run with Docker Compose (recommended)
+
+1. Copy `example.env` as a reference and fill in your values directly in `docker-compose.yml`, or use an `.env` file next to it:
+
+```yaml
+# docker-compose.yml — environment section
+environment:
+  PORT: "3200"
+  WIKIJS_BASE_URL: "http://your-wikijs-host:3000"
+  WIKIJS_TOKEN: "your_wikijs_api_token_here"
+```
+
+2. Start the service:
+
+```bash
+docker compose up -d
+```
+
+3. Verify it is running:
+
+```bash
+curl http://localhost:3200/health
+```
+
+### Run with plain Docker
+
+```bash
+docker run -d \
+  --name wikijs-mcp \
+  -p 3200:3200 \
+  -e WIKIJS_BASE_URL=http://your-wikijs-host:3000 \
+  -e WIKIJS_TOKEN=your_wikijs_api_token_here \
+  --restart unless-stopped \
+  wikijs-mcp-server
+```
+
+### Configure claude.ai as a remote MCP client
+
+Once the server is deployed and reachable over HTTPS, add it in **claude.ai → Settings → Connections → Add MCP Server**:
+
+| Field | Value |
+|-------|-------|
+| Name | wikijs |
+| URL | `https://your-domain.com/mcp` |
+
+The claude.ai client will use `POST /mcp` for JSON-RPC calls and `GET /mcp/events` for SSE events automatically.
+
+### Security note
+
+> **Do not expose the container directly on the internet without TLS.**
+> Place a reverse proxy such as [Nginx](https://nginx.org/) or [Caddy](https://caddyserver.com/) in front of the container to terminate HTTPS. Caddy example:
+>
+> ```
+> your-domain.com {
+>     reverse_proxy localhost:3200
+> }
+> ```
+>
+> Optionally add HTTP Basic Auth or a bearer-token check at the proxy level to prevent unauthorized access to your Wiki.js data.
+
+### GitHub Actions / CI
+
+The repository includes a workflow at `.github/workflows/docker-build.yml` that:
+- Builds the image on every push to `main` and on pull requests
+- Pushes the image to GitHub Container Registry (`ghcr.io`) on pushes to `main` and version tags (`v*`)
+
+To pull the published image:
+
+```bash
+docker pull ghcr.io/<your-github-org>/<repo-name>:main
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Connection Issues
