@@ -1,0 +1,12 @@
+node_modules
+.git
+.cursor
+scripts/
+*.md
+*.sh
+.env*
+example.env
+env.example
+dist/
+*.log
+.DS_Store
